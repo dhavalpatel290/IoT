@@ -1,0 +1,284 @@
+
+CoAP
+
+/*
+
+ESP-COAP Server
+
+ 
+
+*/
+
+ 
+
+#include <ESP8266WiFi.h>
+
+ 
+
+#include <coap_server.h>
+
+#include <SimpleDHT.h>
+
+ 
+
+#define DHT11_PIN D7
+
+ 
+
+SimpleDHT11 dht11;
+
+ 
+
+// CoAP server endpoint url callback
+
+ 
+
+void callback_light(coapPacket &packet, IPAddress ip, int port, int obs);
+
+ 
+
+coapServer coap;
+
+ 
+
+//WiFi connection info
+
+ 
+
+const char* ssid = “BEST”;
+
+const char* password = “qwerty11”;
+
+ 
+
+    LED STATE bool LEDSTATE;
+
+ 
+
+    CoAP server endpoint URL
+
+ 
+
+void callback_temperature(coapPacket *packet, IPAddress ip, int port,int obs) { Serial.println(“temperature”);
+
+ 
+
+byte temperature;
+
+ 
+
+byte humidity;
+
+int chk = dht11.read(DHT11_PIN, &temperature, &humidity, NULL); String msg=”real time temperature: “; msg = msg + temperature;
+
+msg = msg+” C ;real time Humidity: ” ;
+
+msg = msg + humidity ;
+
+msg = msg + “%”;
+
+char message[58];
+
+ 
+
+msg.toCharArray(message,58);
+
+ 
+
+//coap.sendResponse(packet, ip, port, light);
+
+ 
+
+if(obs==1)
+
+coap.sendResponse(message);
+
+else
+
+coap.sendResponse(ip,port,message);
+
+ 
+
+}
+
+ 
+
+// CoAP server endpoint URL
+
+ 
+
+void callback_light(coapPacket *packet, IPAddress ip, int port,int obs) { // send response
+
+char p[packet->payloadlen + 1];
+
+memcpy(p, packet->payload, packet->payloadlen); p[packet->payloadlen] = NULL; Serial.println(p);
+
+ 
+
+String message(p);
+
+ 
+
+if (message.equals(“0”))
+
+ 
+
+{
+
+digitalWrite(D1,LOW);
+
+Serial.println(“if loop”);
+
+}
+
+else if (message.equals(“1”))
+
+{
+
+digitalWrite(D1,HIGH);
+
+Serial.println(“else loop”);
+
+}
+
+ 
+
+char *light = (digitalRead(D1) > 0)? ((char *) “1”) :((char *) “0”);
+
+ 
+
+//coap.sendResponse(packet, ip, port, light);
+
+ 
+
+if(obs==1)
+
+coap.sendResponse(light);
+
+else
+
+coap.sendResponse(ip,port,light);
+
+ 
+
+}
+
+ 
+
+ 
+
+ 
+
+ 
+
+void setup() {
+
+ 
+
+yield();
+
+//serial begin
+
+ 
+
+Serial.begin(115200);
+
+ 
+
+WiFi.begin(ssid, password);
+
+ 
+
+Serial.println(” “);
+
+ 
+
+    Connect to WiFi network Serial.println(); Serial.println(); Serial.print(“Connecting to “); Serial.println(ssid); WiFi.begin(ssid, password);
+
+ 
+
+while (WiFi.status() != WL_CONNECTED) { //delay(500);
+
+ 
+
+yield();
+
+Serial.print(“.”);
+
+}
+
+Serial.println(“”); Serial.println(“WiFi connected”);
+
+ 
+
+    Print the IP address Serial.println(WiFi.localIP());
+
+ 
+
+    LED State
+
+ 
+
+pinMode(D1, OUTPUT);
+
+digitalWrite(D1, HIGH);
+
+ 
+
+LEDSTATE = true;
+
+ 
+
+pinMode(D1, OUTPUT);
+
+ 
+
+digitalWrite(D1, HIGH);
+
+//LEDSTATE = true;
+
+ 
+
+    add server url endpoints.
+
+ 
+
+    can add multiple endpoint urls.
+
+ 
+
+coap.server(callback_light, “light”);
+
+ 
+
+coap.server(callback_temperature, “temperature_sensor”);
+
+    server(callback_text,”text”);
+
+ 
+
+    start coap server/client coap.start();
+
+ 
+
+    start(5683);
+
+ 
+
+}
+
+ 
+
+void loop() {
+
+ 
+
+coap.loop();
+
+delay(1000);
+
+ 
+
+ 
+
+}
